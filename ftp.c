@@ -94,7 +94,7 @@ if(strcmp(cmd->command, "QUIT") == 0){
   printf("\n%s\n", cmd->command);
   state->message = "221 Tchau!!\n";
   close(state->connection);
-  exit(0);
+  //exit(0);
 }
 
 
@@ -132,6 +132,8 @@ int main(int argc, char const *argv[]) {
     perror("listen"); 
     exit(EXIT_FAILURE); 
   } 
+                                                                                                                            
+  printf("Servidor escutando na porta %i\n", PORT);
 	
   while(1) {
     //Espera por requisição de conexão entrante		
@@ -152,7 +154,7 @@ int main(int argc, char const *argv[]) {
       //signal(SIGCHLD,my_wait);
       if(!(valread > 1024)){
         buffer[1023] = '\0';
-        printf("User %s sent command: %s\n",(state->username==0)?"unknown":state->username,buffer);
+        printf("Usuario %s enviou o comando: %s\n",(state->username==0)?"unknown":state->username,buffer);
         parse_command(buffer,cmd);
         state->connection = new_socket;
           
@@ -168,7 +170,7 @@ int main(int argc, char const *argv[]) {
               // }
       }
     }//Fecha colchete do segundo loop
-    printf("Client disconnected.\n");
+    printf("Cliente disconectado.\n");
     exit(0);	
 
     close(new_socket);     
