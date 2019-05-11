@@ -4,7 +4,12 @@
 #include <stdlib.h> 
 #include <netinet/in.h> 
 #include <string.h> 
+#include <time.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #define PORT 21 
+
+typedef enum conn_mode{ NORMAL, SERVER, CLIENT }conn_mode;
 
 typedef struct State {
   /* Connection mode: NORMAL, SERVER, CLIENT */
@@ -74,41 +79,122 @@ void response(Command *cmd, State *state) {
       break;
   } */
 
+  if(strcmp(cmd->command, "USER") == 0){  
+    state->message = "331 Usuario Ok\n";
+  }
 
-if(strcmp(cmd->command, "USER") == 0){
-  printf("\n%s\n", cmd->command);
-  state->message = "331 Usuario Ok\n";
+  if(strcmp(cmd->command, "PASS") == 0){
+    state->message = "230 Login realizado com sucesso!\n";
+  }
+
+  if(strcmp(cmd->command, "SYST") == 0){
+    state->message = "215 Linux\n"; 
+  }
+
+  if(strcmp(cmd->command, "QUIT") == 0){
+    state->message = "221 Tchau!!\n";
+    //close(state->connection);
+  }
+
+  if(strcmp(cmd->command, "LIST") == 0){
+      printf("\nTeste\n");
+/*    if(state->logged_in==1){
+      struct dirent *entry;
+      struct stat statbuf;
+      struct tm *time;
+      char timebuff[80], current_dir[1024];
+      int connection;
+      time_t rawtime;
+*/
+      /* TODO: dynamic buffering maybe? */
+/*      char cwd[1024], cwd_orig[1024];
+      memset(cwd, 0, 1024);
+      memset(cwd_orig, 0, 1024);
+*/
+    
+      /* Later we want to go to the original path */
+//      getcwd(cwd_orig, 1024);
+    
+      /* Just chdir to specified path */
+/*      if(strlen(cmd->arg)>0&&cmd->arg[0]!='-'){
+        chdir(cmd->arg);
+      }
+    
+      getcwd(cwd, 1024);
+      DIR *dp = opendir(cwd);
+    } */
+  }
+
+  write(state->connection, state->message, strlen(state->message));
+
 }
+    /*
+    if(!dp){
+      state->message = "550 Failed to open directory.\n";
+    }else{
+      if(state->mode == SERVER){
 
-if(strcmp(cmd->command, "PASS") == 0){
-  printf("\n%s\n", cmd->command);
-  state->message = "230 Login realizado com sucesso!\n";
-}
+        connection = accept_connection(state->sock_pasv);
+        state->message = "150 Here comes the directory listing.\n";
+        puts(state->message);
 
-if(strcmp(cmd->command, "SYST") == 0){
-  printf("\n%s\n", cmd->command);
-  state->message = "Linux\n";
-}
+        while(entry=readdir(dp)){
+          if(stat(entry->d_name,&statbuf)==-1){
+            fprintf(stderr, "FTP: Error reading file stats...\n");
+          }else{
+            char *perms = malloc(9);
+            memset(perms,0,9);
+       */
+            /* Convert time_t to tm struct */
+/*
+            rawtime = statbuf.st_mtime;
+            time = localtime(&rawtime);
+            strftime(timebuff,80,"%b %d %H:%M",time);
+            str_perm((statbuf.st_mode & ALLPERMS), perms);
+            dprintf(connection,
+                "%c%s %5d %4d %4d %8d %s %s\r\n", 
+                (entry->d_type==DT_DIR)?'d':'-',
+                perms,statbuf.st_nlink,
+                statbuf.st_uid, 
+                statbuf.st_gid,
+                statbuf.st_size,
+                timebuff,
+                entry->d_name);
+          }
+        }
+        write_state(state);
+        state->message = "226 Directory send OK.\n";
+        state->mode = NORMAL;
+        close(connection);
+        close(state->sock_pasv);
 
-if(strcmp(cmd->command, "QUIT") == 0){
-  printf("\n%s\n", cmd->command);
-  state->message = "221 Tchau!!\n";
-  close(state->connection);
-  //exit(0);
-}
+      }else if(state->mode == CLIENT){
+        state->message = "502 Command not implemented.\n";
+      }else{
+        state->message = "425 Use PASV or PORT first.\n";
+      }
+    }
+    closedir(dp);
+    chdir(cwd_orig);
+  }else{
+    state->message = "530 Please login with USER and PASS.\n";
+  }
+  state->mode = NORMAL;
+  write_state(state);
+} */
 
 
-write(state->connection, state->message, strlen(state->message));
 
-}
+//}
 
 int main(int argc, char const *argv[]) { 
   int server_fd, new_socket, valread; 
   struct sockaddr_in address; 
   int addrlen = sizeof(address); 
-  char buffer[1024] = {0}; 
   Command *cmd = malloc(sizeof(Command));
   State *state = malloc(sizeof(State));
+  char buffer[1024] = {0}; 
+
   char *hello = "220 Seja bem vindo\n"; 
 	
   //Cria o socket
@@ -137,12 +223,11 @@ int main(int argc, char const *argv[]) {
 	
   while(1) {
     //Espera por requisição de conexão entrante		
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) { 
+    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) { 
       perror("accept"); 
       exit(EXIT_FAILURE); 
     }
  
-    printf("Realizada requisição de conexão entrante\n");
     close(server_fd);
 
     //Faz envio de mensagem de boas vindas ao cliente que fez a requisição de conexão entrante	
@@ -150,8 +235,6 @@ int main(int argc, char const *argv[]) {
 
     //Aguarda por comando do cliente
     while (valread = read(new_socket, buffer, 1024)){
-      printf("%s", buffer);
-      //signal(SIGCHLD,my_wait);
       if(!(valread > 1024)){
         buffer[1023] = '\0';
         printf("Usuario %s enviou o comando: %s\n",(state->username==0)?"unknown":state->username,buffer);
@@ -162,20 +245,19 @@ int main(int argc, char const *argv[]) {
         if(buffer[0]<=127 || buffer[0]>=0){
           response(cmd,state);
         }
-        //    memset(buffer,0,BSIZE);
-        //    memset(cmd,0,sizeof(cmd));
-        //  }else{
+
+        if(strcmp(cmd, "QUIT") == 0 || strcmp(cmd, "quit") == 0){
+          response(cmd, state);
+          close(new_socket);     
+          return 0;
+        }
+        memset(buffer,0, 1024);
+        memset(cmd,0,sizeof(cmd));
+      }else{
         /* Read error */
-        //   perror("server:read");
-              // }
+        perror("server:read");
       }
-    }//Fecha colchete do segundo loop
-    printf("Cliente disconectado.\n");
-    exit(0);	
-
-    close(new_socket);     
-          
-  }//Fecha colchete do loop principal
-
-}//Fecha colchete do main 
+    } //Fecha colchete do segundo loop
+  } //Fecha colchete do loop principal
+} //Fecha chave do main 
 
