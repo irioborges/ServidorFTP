@@ -1305,13 +1305,12 @@ void do_dirlist(char *dirname, char verbose)
 
 	if (dirname[0] != '\0') {
       /* check for show hidden files flag */
-      if ( (dirname[0] == '-' ) && (dirname[1] == 'a') )
-                {
-                   show_hidden = TRUE;
-                   while ((dirname[0] != ' ') && (dirname[0] != '\0'))
-                                dirname++;
-                   if (dirname[0] != '\0')
-                          dirname++;
+      if ( (dirname[0] == '-' ) && (dirname[1] == 'a') ){
+        show_hidden = TRUE;
+        while ((dirname[0] != ' ') && (dirname[0] != '\0'))
+          dirname++;
+          if (dirname[0] != '\0')
+            dirname++;
                 }
 		/* skip other arguments */
 		else if (dirname[0] == '-') {

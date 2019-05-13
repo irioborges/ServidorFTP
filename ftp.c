@@ -10,6 +10,8 @@
 //#include <string.h>
 #define PORT 21 
 
+int porta_port;
+
 typedef enum conn_mode{ NORMAL, SERVER, CLIENT }conn_mode;
 
 typedef struct State {
@@ -50,17 +52,49 @@ void parse_command(char *cmdstring, Command *cmd)
 }
 
 int calcularPorta(Command *cmd) {
-  int i, contaVirgulas = 0;
-  
-  printf("\nTamanho do argumento eh: %i\n", strlen(cmd->arg));  
+  unsigned long a0, a1, a2, a3, p0, p1, addr;  
 
-  for(i = 0; i < strlen(cmd->arg); i++){
-    //if(strcmp(cmd->arg[i], ",") == 0){
-    
-    printf("Caracter %c em %i, resultado de virgula e: %i\n", cmd->arg[i], i);   
-    
-    //}
-  }
+  sscanf(cmd->arg, "%lu,%lu,%lu,%lu,%lu,%lu", &a0, &a1, &a2, &a3, &p0, &p1);
+
+  return (p0 * 256) + p1;
+
+}
+
+int abreConexaoCliente(){
+struct sockaddr_in address; 
+    int sock = 0, valread; 
+    struct sockaddr_in serv_addr; 
+    char *hello = "Hello from client"; 
+    char buffer[1024] = {0}; 
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
+    { 
+        printf("\n Socket creation error \n"); 
+        return -1; 
+    } 
+   
+    memset(&serv_addr, '0', sizeof(serv_addr)); 
+   
+    serv_addr.sin_family = AF_INET; 
+    //serv_addr.sin_port = htons(calcularPorta(cmd)); 
+       
+    // Convert IPv4 and IPv6 addresses from text to binary form 
+    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0)  
+    { 
+        printf("\nInvalid address/ Address not supported \n"); 
+        return -1; 
+    } 
+   
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+    { 
+        printf("\nConnection Failed \n"); 
+        return -1; 
+    } 
+    send(sock , hello , strlen(hello) , 0 ); 
+    printf("Hello message sent\n"); 
+    valread = read( sock , buffer, 1024); 
+    printf("%s\n",buffer ); 
+
+    //state->message = "200 Command okay.\n";
 }
 
 void response(Command *cmd, State *state) {
@@ -111,7 +145,7 @@ void response(Command *cmd, State *state) {
   }
 
   if(strcmp(cmd->command, "PORT") == 0){
-    calcularPorta(cmd);
+    //printf("%i\n", calcularPorta(cmd));
     state->message = "200 Command okay.\n";
   }
 
@@ -201,9 +235,6 @@ void response(Command *cmd, State *state) {
   state->mode = NORMAL;
   write_state(state);
 } */
-
-
-
 //}
 
 int main(int argc, char const *argv[]) { 
@@ -214,7 +245,7 @@ int main(int argc, char const *argv[]) {
   State *state = malloc(sizeof(State));
   char buffer[1024] = {0}; 
 
-  char *hello = "Service ready for new user.\n"; 
+  char *hello = "220 Service ready for new user.\n"; 
 	
   //Cria o socket
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) { 
