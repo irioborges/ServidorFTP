@@ -7,6 +7,7 @@
 #include <time.h>
 #include <dirent.h>
 #include <sys/stat.h>
+//#include <string.h>
 #define PORT 21 
 
 typedef enum conn_mode{ NORMAL, SERVER, CLIENT }conn_mode;
@@ -48,6 +49,20 @@ void parse_command(char *cmdstring, Command *cmd)
   sscanf(cmdstring,"%s %s",cmd->command,cmd->arg);
 }
 
+int calcularPorta(Command *cmd) {
+  int i, contaVirgulas = 0;
+  
+  printf("\nTamanho do argumento eh: %i\n", strlen(cmd->arg));  
+
+  for(i = 0; i < strlen(cmd->arg); i++){
+    //if(strcmp(cmd->arg[i], ",") == 0){
+    
+    printf("Caracter %c em %i, resultado de virgula e: %i\n", cmd->arg[i], i);   
+    
+    //}
+  }
+}
+
 void response(Command *cmd, State *state) {
 /*  switch(lookup_cmd(cmd->command)){
     case USER: ftp_user(cmd,state); break;
@@ -80,11 +95,11 @@ void response(Command *cmd, State *state) {
   } */
 
   if(strcmp(cmd->command, "USER") == 0){  
-    state->message = "331 Usuario Ok\n";
+    state->message = "331 User name okay, need password.\n";
   }
 
   if(strcmp(cmd->command, "PASS") == 0){
-    state->message = "230 Login realizado com sucesso!\n";
+    state->message = "230 User logged in, proceed.\n";
   }
 
   if(strcmp(cmd->command, "SYST") == 0){
@@ -93,7 +108,11 @@ void response(Command *cmd, State *state) {
 
   if(strcmp(cmd->command, "QUIT") == 0){
     state->message = "221 Tchau!!\n";
-    //close(state->connection);
+  }
+
+  if(strcmp(cmd->command, "PORT") == 0){
+    calcularPorta(cmd);
+    state->message = "200 Command okay.\n";
   }
 
   if(strcmp(cmd->command, "LIST") == 0){
@@ -195,7 +214,7 @@ int main(int argc, char const *argv[]) {
   State *state = malloc(sizeof(State));
   char buffer[1024] = {0}; 
 
-  char *hello = "220 Seja bem vindo\n"; 
+  char *hello = "Service ready for new user.\n"; 
 	
   //Cria o socket
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) { 
