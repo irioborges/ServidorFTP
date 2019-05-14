@@ -39,7 +39,6 @@ typedef struct State {
 
 } State;
 
-
 typedef struct Command {
   char command[5];
   char arg[1024];
@@ -55,7 +54,7 @@ int calcularPorta(Command *cmd) {
   unsigned long a0, a1, a2, a3, p0, p1, addr;  
 
   sscanf(cmd->arg, "%lu,%lu,%lu,%lu,%lu,%lu", &a0, &a1, &a2, &a3, &p0, &p1);
-
+  
   return (p0 * 256) + p1;
 
 }
@@ -146,36 +145,52 @@ void response(Command *cmd, State *state) {
 
   if(strcmp(cmd->command, "PORT") == 0){
     //printf("%i\n", calcularPorta(cmd));
+    porta_port = calcularPorta(cmd);
     state->message = "200 Command okay.\n";
   }
 
+  if(strcmp(cmd->command, "RETR") == 0){
+    
+    struct sockaddr_in address2; 
+    struct sockaddr_in serv_addr2; 
+    int sock2 = 0, valread; 
+    char *primeiraMSG = "150 File status okay; about to open data connection.\n";
+    char *segundaMSG = "226 Requested file action successful\n";  
+    char buffer[1024] = {0}; 
+    
+    if ((sock2 = socket(AF_INET, SOCK_STREAM, 0)) < 0) { 
+      printf("\n Socket creation error \n"); 
+      return -1; 
+    } 
+   
+    memset(&serv_addr2, '0', sizeof(serv_addr2)); 
+   
+    serv_addr2.sin_family = AF_INET; 
+    serv_addr2.sin_port = htons(porta_port); //htons(calcularPorta(cmd)); 
+       
+    // Convert IPv4 and IPv6 addresses from text to binary form 
+    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr2.sin_addr)<=0) { 
+      printf("\nInvalid address/ Address not supported \n"); 
+      return -1; 
+    } 
+   
+    if (connect(sock2, (struct sockaddr *)&serv_addr2, sizeof(serv_addr2)) < 0) { 
+      printf("\nConnection Failed %i\n", serv_addr2.sin_port); 
+      return -1; 
+    }
+ 
+    send(sock2, primeiraMSG, strlen(primeiraMSG), 0 ); 
+    printf("%s\n", primeiraMSG); 
+    //valread = read(sock2, buffer, 1024); 
+    printf("%s\n",buffer ); 
+    send(sock2, "alguma coisa", strlen("alguma coisa"), 0 ); 
+    state->message = segundaMSG;
+    printf("\n%s\n", state->message);
+  }
+
+
   if(strcmp(cmd->command, "LIST") == 0){
       printf("\nTeste\n");
-/*    if(state->logged_in==1){
-      struct dirent *entry;
-      struct stat statbuf;
-      struct tm *time;
-      char timebuff[80], current_dir[1024];
-      int connection;
-      time_t rawtime;
-*/
-      /* TODO: dynamic buffering maybe? */
-/*      char cwd[1024], cwd_orig[1024];
-      memset(cwd, 0, 1024);
-      memset(cwd_orig, 0, 1024);
-*/
-    
-      /* Later we want to go to the original path */
-//      getcwd(cwd_orig, 1024);
-    
-      /* Just chdir to specified path */
-/*      if(strlen(cmd->arg)>0&&cmd->arg[0]!='-'){
-        chdir(cmd->arg);
-      }
-    
-      getcwd(cwd, 1024);
-      DIR *dp = opendir(cwd);
-    } */
   }
 
   write(state->connection, state->message, strlen(state->message));

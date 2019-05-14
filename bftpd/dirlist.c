@@ -157,7 +157,7 @@ void bftpd_stat(char *name, FILE * client)
     if (filetime.tm_year == tea_time->tm_year)
     	mystrncpy(timestr, ctime(&(statbuf.st_mtime)) + 4, 12);
     else
-        strftime(timestr, sizeof(timestr), "%b %d  %G", &filetime);
+    strftime(timestr, sizeof(timestr), "%b %d  %G", &filetime);
     mygetpwuid(statbuf.st_uid, passwdfile, uid)[8] = 0;
     mygetpwuid(statbuf.st_gid, groupfile, gid)[8] = 0;
 	fprintf(client, "%s %3i %-8s %-8s %llu %s %s%s\r\n", perm,
@@ -187,135 +187,69 @@ void dirlist_one_file(char *name, FILE *client, char verbose)
     else
        filename_index = name;    
 
-    if (verbose)
-        bftpd_stat(name, client);
-    else
-        fprintf(client, "%s\r\n", filename_index);
+    if (verbose) {
+        printf("teste"); 
+        bftpd_stat(name, client); //faz a resposta para o cliente
+    } else
+      fprintf(client, "%s\r\n", filename_index);
 }
 
-void dirlist(char *name, FILE * client, char verbose, int show_hidden)
-{
-    DIR *directory = NULL;
-    FILE *can_see_file;
-    int show_nonreadable_files = FALSE;
-    int show_hidden_files = FALSE;
-    int skip_file, file_is_hidden;
-    char *local_cwd = NULL;
-    char *pattern = NULL, *short_pattern;
-    /* int i; */
-    struct dirent *dir_entry;
-    /* glob_t globbuf; */
+void dirlist(char *name, FILE * client, char verbose, int show_hidden) {
+  DIR *directory = NULL;
+  FILE *can_see_file;
+  int show_nonreadable_files = FALSE;
+  int show_hidden_files = FALSE;
+  int skip_file, file_is_hidden;
+  char *local_cwd = NULL;
+  char *pattern = NULL, *short_pattern;
+  struct dirent *dir_entry;
 
-    if ( (show_hidden) && 
-         (! strcasecmp( config_getoption("SHOW_HIDDEN_FILES"), "yes") ) )
-       show_hidden_files = TRUE;
-
-    /* check for always show hidden */
-    if (! strcasecmp( config_getoption("SHOW_HIDDEN_FILES"), "always") )
-       show_hidden_files = TRUE;
-
-    if (! strcasecmp( config_getoption("SHOW_NONREADABLE_FILES"), "yes") )
-       show_nonreadable_files = TRUE;
-
-    if ((strstr(name, "/.")) && strchr(name, '*'))
-        return; /* DoS protection */
-
-     if ((directory = opendir(name))) 
-     {
-        closedir(directory);
-        local_cwd = bftpd_cwd_getcwd();
-        if ( chdir(name) == -1)
-            fprintf(client, "Chdir failed: %s\n", strerror(errno));
-     }
-     else
-       pattern = name;
-
-             /*
-             glob("*", 0, NULL, &globbuf);
-             if (show_hidden_files)
-                 glob(".*", GLOB_APPEND, NULL, &globbuf);
-	} 
-        else
-        {
-    	     if ( (name[0] == '*') && (show_hidden_files) )
-             {
-                glob(name, 0, NULL, &globbuf);
-                glob(".*", GLOB_APPEND, NULL, &globbuf);
-             }
-             else
-                glob(name, 0, NULL, &globbuf);
-        }
-             */
-
-        /*
-	for (i = 0; i < globbuf.gl_pathc; i++)
-        {
-            if (! show_nonreadable_files) 
-            {
-               if ( (can_see_file = fopen(globbuf.gl_pathv[i], "r") ) == NULL)
-                   continue;
-               else
-                   fclose(can_see_file);
-            }
-
-            dirlist_one_file(globbuf.gl_pathv[i], client, verbose);
-        }
+  if ((directory = opendir(name))) {
+    closedir(directory);
+    if ( chdir(name) == -1) fprintf(client, "Chdir failed: %s\n", strerror(errno));
+  } else printf("caiu no else");
      
-	globfree(&globbuf);
-        */
-        directory = opendir(".");
-        if (directory)
-        {
-          dir_entry = readdir(directory);
-          while (dir_entry)
-          {
-              /* This check makes sure we skipped named pipes,
-                 which cannot be opened like normal files
-                 without hanging the server. -- Jesse
-              */
-#ifndef __minix
-              if (dir_entry->d_type != DT_FIFO)
-              {
-#endif
-              can_see_file = fopen(dir_entry->d_name, "r");
-              if (can_see_file) 
-                  fclose(can_see_file);
-              file_is_hidden = (dir_entry->d_name[0] == '.') ? TRUE : FALSE;
-              skip_file = TRUE;
+  pattern = name;
+  directory = opendir(".");
+  
+  if (directory) {
+    dir_entry = readdir(directory);
+    while (dir_entry) {
+      #ifndef __minix
+      if (dir_entry->d_type != DT_FIFO) {
+      #endif
+         
+      can_see_file = fopen(dir_entry->d_name, "r");
+         
+      if (can_see_file) fclose(can_see_file);
+      file_is_hidden = (dir_entry->d_name[0] == '.') ? TRUE : FALSE;
+      skip_file = TRUE;
 
-              if ( (! file_is_hidden) || (show_hidden_files) )
-              {
-                  if ( (can_see_file) || (show_nonreadable_files) )
-                  {
-                      if (pattern)
-                      {
-                        /* strip leading path */
-                        short_pattern = strrchr(pattern, '/');
-                        if (short_pattern)
-                           short_pattern++;
-                        else
-                           short_pattern = pattern;
-                        skip_file = fnmatch(short_pattern, dir_entry->d_name,
-                                            FNM_NOESCAPE);
-                      }
-                      else
-                        skip_file = FALSE;
-                  } 
-              }
-              if (! skip_file)
-                  dirlist_one_file(dir_entry->d_name, client, verbose); 
-#ifndef __minix
-              }
-#endif
-              dir_entry = readdir(directory);
-          }
-          closedir(directory);
-        }       /* unable to open directory */
+      if ( (! file_is_hidden) || (show_hidden_files) ) {
+        if ( (can_see_file) || (show_nonreadable_files) ) {
+          if (pattern) {
+            short_pattern = strrchr(pattern, '/');
+            if (short_pattern) short_pattern++;
+            else short_pattern = pattern;
+            skip_file = fnmatch(short_pattern, dir_entry->d_name, FNM_NOESCAPE);
+          }else skip_file = FALSE;
+        } 
+      }
+         
+      if (! skip_file) dirlist_one_file(dir_entry->d_name, client, verbose); 
+      #ifndef __minix
+      }
+      #endif
+      dir_entry = readdir(directory); 
+    } 
+    
+    closedir(directory);
+  }       /* unable to open directory */
 
-	if (local_cwd) {
-		if (chdir(local_cwd) == -1)
-                    fprintf(client, "Chdir failed: %s\n", strerror(errno));
-		free(local_cwd);
-	}
+  /*
+  if (local_cwd) {
+    if (chdir(local_cwd) == -1) fprintf(client, "Chdir failed: %s\n", strerror(errno));
+    free(local_cwd);
+  }  */
 }
 

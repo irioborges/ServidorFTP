@@ -1311,21 +1311,20 @@ void do_dirlist(char *dirname, char verbose)
           dirname++;
           if (dirname[0] != '\0')
             dirname++;
-                }
-		/* skip other arguments */
-		else if (dirname[0] == '-') {
-			while ((dirname[0] != ' ') && (dirname[0] != '\0'))
+      }else if (dirname[0] == '-') {
+		while ((dirname[0] != ' ') && (dirname[0] != '\0'))
 				dirname++;
-			if (dirname[0] != '\0')
+		if (dirname[0] != '\0')
 				dirname++;
-		}
+	  }
 	}
-	if (dataconn())
-		return;
-        alarm(0);
+
+    
+	if (dataconn()) return;
+    alarm(0);
 	datastream = fdopen(sock, "w");
-	if (dirname[0] == '\0')
-		dirlist("*", datastream, verbose, show_hidden);
+	
+    if (dirname[0] == '\0') dirlist("*", datastream, verbose, show_hidden);
 	else {
 		char *mapped = bftpd_cwd_mappath(dirname);
                 if (! mapped)
@@ -1334,11 +1333,12 @@ void do_dirlist(char *dirname, char verbose)
                    fclose(datastream);
                    return;
                 }
-		dirlist(mapped, datastream, verbose, show_hidden);
+		//dirlist(mapped, datastream, verbose, show_hidden);
 		free(mapped);
 	}
 	fclose(datastream);
-        alarm(control_timeout);
+    alarm(control_timeout);
+      
 	control_printf(SL_SUCCESS, "226 Directory list has been submitted.");
 }
 
