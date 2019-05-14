@@ -179,11 +179,13 @@ void response(Command *cmd, State *state) {
       return -1; 
     }
  
-    send(sock2, primeiraMSG, strlen(primeiraMSG), 0 ); 
+    write(state->connection, primeiraMSG, strlen(primeiraMSG));
+    //send(sock2, primeiraMSG, strlen(primeiraMSG), 0 ); 
     printf("%s\n", primeiraMSG); 
     //valread = read(sock2, buffer, 1024); 
     printf("%s\n",buffer ); 
     send(sock2, "alguma coisa", strlen("alguma coisa"), 0 ); 
+    close(sock2);
     state->message = segundaMSG;
     printf("\n%s\n", state->message);
   }
@@ -191,6 +193,10 @@ void response(Command *cmd, State *state) {
 
   if(strcmp(cmd->command, "LIST") == 0){
       printf("\nTeste\n");
+  }
+
+  if(strcmp(cmd->command, "NOOP") == 0){
+    state->message = "200 OK\n";
   }
 
   write(state->connection, state->message, strlen(state->message));
