@@ -11,8 +11,22 @@
 #define PORT 21 
 
 int porta_port;
+
+//TYPE 
 char *type = "a";
 char *code = "n";
+
+//MODE
+//S - Stream
+//B - Block
+//C - Compressed
+char mode = "S";
+
+//STRU
+//F - File (no record structure)
+//R - Record structure
+//P - Page structure
+char stru = "F";
 
 typedef enum conn_mode{ NORMAL, SERVER, CLIENT }conn_mode;
 
@@ -146,17 +160,41 @@ void response(Command *cmd, State *state) {
   }
 
   if(strcmp(cmd->command, "TYPE") == 0 || strcmp(cmd->command, "type") == 0) {
-                  //Possíveis retornos
-                  //200
-                  //500, 501, 504, 421, 530
+    //Possíveis retornos
+    //200
+    //500, 501, 504, 421, 530
     //*type = (char) cmd->arg[0];
     //type = cmd->arg[0];
     //code = cmd->arg[2];
     //printf("\n%s\n", cmd->arg);
     //sscanf(cmd->arg, "%s-%s", type, code);
-    printf("\n%s %s\n", type, code);
     state->message = "200 Command okay.\n";
   }
+
+  if(strcmp(cmd->command, "MODE") == 0 || strcmp(cmd->command, "mode") == 0) {
+    //Possíveis retornos
+    //200
+    //500, 501, 504, 421, 530
+    //*type = (char) cmd->arg[0];
+    //type = cmd->arg[0];
+    //code = cmd->arg[2];
+    //printf("\n%s\n", cmd->arg);
+    //sscanf(cmd->arg, "%s-%s", type, code);
+    state->message = "200 Command okay.\n";
+  }
+
+  if(strcmp(cmd->command, "STRU") == 0 || strcmp(cmd->command, "stru") == 0) {
+    //Possíveis retornos
+    //200
+    //500, 501, 504, 421, 530
+    //*type = (char) cmd->arg[0];
+    //type = cmd->arg[0];
+    //code = cmd->arg[2];
+    //printf("\n%s\n", cmd->arg);
+    //sscanf(cmd->arg, "%s-%s", type, code);
+    state->message = "200 Command okay.\n";
+  }
+
 
   if(strcmp(cmd->command, "PORT") == 0 || strcmp(cmd->command, "port") == 0){
     //printf("%i\n", calcularPorta(cmd));
