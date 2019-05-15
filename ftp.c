@@ -11,6 +11,8 @@
 #define PORT 21 
 
 int porta_port;
+char *type = "a";
+char *code = "n";
 
 typedef enum conn_mode{ NORMAL, SERVER, CLIENT }conn_mode;
 
@@ -127,23 +129,36 @@ void response(Command *cmd, State *state) {
       break;
   } */
 
-  if(strcmp(cmd->command, "USER") == 0){  
+  if(strcmp(cmd->command, "USER") == 0 || strcmp(cmd->command, "user") == 0){  
     state->message = "331 User name okay, need password.\n";
   }
 
-  if(strcmp(cmd->command, "PASS") == 0){
+  if(strcmp(cmd->command, "PASS") == 0 || strcmp(cmd->command, "pass") == 0){
     state->message = "230 User logged in, proceed.\n";
   }
 
-  if(strcmp(cmd->command, "SYST") == 0){
+  if(strcmp(cmd->command, "SYST") == 0 || strcmp(cmd->command, "syst") == 0){
     state->message = "215 Linux\n"; 
   }
 
-  if(strcmp(cmd->command, "QUIT") == 0){
+  if(strcmp(cmd->command, "QUIT") == 0 || strcmp(cmd->command, "quit") == 0){
     state->message = "221 Tchau!!\n";
   }
 
-  if(strcmp(cmd->command, "PORT") == 0){
+  if(strcmp(cmd->command, "TYPE") == 0 || strcmp(cmd->command, "type") == 0) {
+                  //Possíveis retornos
+                  //200
+                  //500, 501, 504, 421, 530
+    //*type = (char) cmd->arg[0];
+    //type = cmd->arg[0];
+    //code = cmd->arg[2];
+    //printf("\n%s\n", cmd->arg);
+    //sscanf(cmd->arg, "%s-%s", type, code);
+    printf("\n%s %s\n", type, code);
+    state->message = "200 Command okay.\n";
+  }
+
+  if(strcmp(cmd->command, "PORT") == 0 || strcmp(cmd->command, "port") == 0){
     //printf("%i\n", calcularPorta(cmd));
     porta_port = calcularPorta(cmd);
     state->message = "200 Command okay.\n";
