@@ -4,6 +4,7 @@
 #include <string.h> 
 #include <signal.h>
 #include <sys/wait.h>
+#include <pthread.h>
 
 #define PORT 21 
 
@@ -57,6 +58,12 @@ typedef struct Command {
   char command[5];
   char arg[1024];
 } Command;
+
+typedef struct thread_argumento {
+  int server_fd;
+  int int_socket;
+  int teste;
+} Thread_argumento;
 
 
 void parse_command(char *cmdstring, Command *cmd)
@@ -280,15 +287,75 @@ void response(Command *cmd, State *state) {
 } */
 //}
 
-int main(int argc, char const *argv[]) { 
-  int server_fd, int_socket, valread, pid; 
-  struct sockaddr_in address; 
-  int addrlen = sizeof(address); 
+#define TRUE 1
+#define FALSE 0
+
+//Função de teste de permutação para 2 parâmetros. 2!(2 fatorial)
+int isPermutationOf(const char *s1, const char *s2){
+  return FALSE;
+}
+
+void *conexaoControle(void *arg){
+  char buffer[1024] = {0}; 
+  char *hello = "220 Service ready for new user.\n"; 
+
+  int valread, server_fd, int_socket;
+
+  Thread_argumento *thread_argumento;
+
   Command *cmd = malloc(sizeof(Command));
   State *state = malloc(sizeof(State));
-  char buffer[1024] = {0}; 
 
-  char *hello = "220 Service ready for new user.\n"; 
+  thread_argumento = (Thread_argumento *) arg;
+  
+  server_fd = thread_argumento->server_fd;
+  int_socket = thread_argumento->int_socket;
+
+  //Faz envio de mensagem de boas vindas ao cliente que fez a requisição de conexão entrante	
+  write(int_socket, hello, strlen(hello)); 
+
+  //Aguarda por comando do cliente
+  while (valread = read(int_socket, buffer, 1024) && int_quit == 0){
+    if(!(valread > 1024)){
+      buffer[1023] = '\0';
+      printf("Usuario %s enviou o comando: %s\n", (state->username==0) ? "anonymous" : state->username, buffer);
+      parse_command(buffer,cmd);
+      state->connection = int_socket;
+          
+      /* Ignore non-ascii char. Ignores telnet command */ 
+      if(buffer[0]<=127 || buffer[0]>=0){
+        response(cmd,state);
+      }
+
+      if(int_quit == -1){
+        int_quit = 0;
+	  pthread_exit(NULL);
+      }
+
+      memset(buffer,0, 1024);
+      memset(cmd,0,sizeof(cmd));
+    }else{
+      /* Read error */
+      perror("server:read");
+    }
+  } //Fecha colchete do segundo loop
+  printf("\nCliente encerrou a conexao!\n");
+
+
+
+  return;
+}
+
+int main(int argc, char const *argv[]) { 
+  //Declaração de variáveis locais ao método main
+  struct sockaddr_in address;   
+
+  int server_fd, int_socket, pid, int_num_threads = 0, i = 0; 
+  int addrlen = sizeof(address); 
+
+  pthread_t thread[100];
+  Thread_argumento thread_argumento[5];
+  //Fim de declaração de variáveis
 	
   //Cria o socket
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) { 
@@ -298,7 +365,7 @@ int main(int argc, char const *argv[]) {
 
   address.sin_family = AF_INET; 
   address.sin_addr.s_addr = INADDR_ANY; 
-  address.sin_port = htons( PORT ); 
+  address.sin_port = htons(PORT); 
 	
   //Associa o socket a porta
   if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) { 
@@ -306,7 +373,7 @@ int main(int argc, char const *argv[]) {
     exit(EXIT_FAILURE); 
   } 
 
-    //Escuta o socket na porta
+  //Escuta o socket na porta
   if (listen(server_fd, 3) < 0) { 
     perror("listen"); 
     exit(EXIT_FAILURE); 
@@ -322,11 +389,24 @@ int main(int argc, char const *argv[]) {
       perror("accept"); 
       exit(EXIT_FAILURE); 
     }
-	 
+
+    thread_argumento->server_fd = server_fd;
+    thread_argumento->int_socket = int_socket;
+
+    pthread_create(&(thread[int_num_threads]), NULL, conexaoControle, &thread_argumento[0]);
+
+    //if(int_quit == -1){
+    //  printf("\nCliente saiu\n");
+    //  int_quit = 0;
+    //}
+
+    int_num_threads++;
+
+    /*	 
     pid = fork();
 
     if(pid == 0){
-
+      close(server_fd);
       //Faz envio de mensagem de boas vindas ao cliente que fez a requisição de conexão entrante	
       write(int_socket, hello, strlen(hello)); 
 
@@ -335,11 +415,11 @@ int main(int argc, char const *argv[]) {
       
         if(!(valread > 1024)){
           buffer[1023] = '\0';
-          printf("Usuario %s enviou o comando: %s\n", (state->username==0) ? "unknown" : state->username, buffer);
+          printf("Usuario %s enviou o comando: %s\n", (state->username==0) ? "anonymous" : state->username, buffer);
           parse_command(buffer,cmd);
           state->connection = int_socket;
           
-          /* Ignore non-ascii char. Ignores telnet command */
+          /* Ignore non-ascii char. Ignores telnet command */ /*
           if(buffer[0]<=127 || buffer[0]>=0){
             response(cmd,state);
           }
@@ -347,21 +427,24 @@ int main(int argc, char const *argv[]) {
 	  if(int_quit == -1) {
 	    printf("\nLiberando socket\n");
 	  
-            //sleep(1);
-	    close(server_fd);
             sleep(1);
-            close(int_socket);
+	    close(server_fd);
+            //sleep(1);
+            //close(int_socket);
           }
           memset(buffer,0, 1024);
           memset(cmd,0,sizeof(cmd));
         }else{
           /* Read error */
-          perror("server:read");
-        }
-      } //Fecha colchete do segundo loop
+          //perror("server:read");
+        //}
+      //} //Fecha colchete do segundo loop
       //sleep(2);
-      //close(server_fd);
-    } //Fecha colchete do loop principal
+      //close(server_fd); 
+    /* }else{
+      printf("\nFechando conexao\n");
+      close(int_socket);
+    } */
   }
 } //Fecha chave do main 
 
