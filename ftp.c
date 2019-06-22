@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include <getopt.h>
 
 #define PORT 21 
 
@@ -329,7 +330,7 @@ void *conexaoControle(void *arg){
 
       if(int_quit == -1){
         int_quit = 0;
-	  pthread_exit(NULL);
+	pthread_exit(NULL);
       }
 
       memset(buffer,0, 1024);
@@ -339,23 +340,53 @@ void *conexaoControle(void *arg){
       perror("server:read");
     }
   } //Fecha colchete do segundo loop
-  printf("\nCliente encerrou a conexao!\n");
-
-
-
-  return;
 }
 
 int main(int argc, char const *argv[]) { 
-  //Declaração de variáveis locais ao método main
-  struct sockaddr_in address;   
+  ///Declaração de variáveis locais ao método main 
+  /* */ struct sockaddr_in address;   
 
-  int server_fd, int_socket, pid, int_num_threads = 0, i = 0; 
-  int addrlen = sizeof(address); 
+  /* */ int server_fd, int_socket, pid, int_num_threads = 0, i = 0, int_opt, int_t = 0; 
+  /* */ int addrlen = sizeof(address); 
 
-  pthread_t thread[100];
-  Thread_argumento thread_argumento[5];
+  /* */ int flags = 0, opt, int_taxa = 0, int_controle_congestionamento = 0;
+  /* */ int nsecs = 0, tfnd = 0;
+
+  /* */ pthread_t thread[100];
+  /* */ Thread_argumento thread_argumento[100];
   //Fim de declaração de variáveis
+
+  /*
+  while((int_opt = getopt(argc, argv, "ht:")) != -1){
+    switch (int_opt){
+      case 't':
+        int_t = &optarg;
+        break;
+      default: 
+        fprintf(stderr, "Uso: %s [-t taxa minima de envio em kbps] [-n] name\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+  }
+  
+  */
+  while ((opt = getopt(argc, argv, "ct:")) != -1) {
+    switch (opt) {
+      case 'c':
+        int_controle_congestionamento = -1;
+	break;
+      case 't':
+        int_taxa = atoi(optarg);
+        break;
+      default: /* '?' */
+        fprintf(stderr, "Uso: %s [-t taxa mínima de envio] [-c ativa controle de congestionamento]\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+  }
+
+  if (optind <= argc) {
+    fprintf(stderr, "Uso: %s [-t taxa minima de envio] [-c ativa controle de congestionamento]\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
 	
   //Cria o socket
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) { 
@@ -379,7 +410,8 @@ int main(int argc, char const *argv[]) {
     exit(EXIT_FAILURE); 
   } 
                                                                                                                             
-  printf("Servidor escutando na porta %i\n", PORT);
+  printf("Servidor escutando na porta %i com taxa mínima de envio de %i", PORT, int_taxa);
+  (int_controle_congestionamento == -1) ? printf(" com controle de congestionamento ativado\n") : printf(" com controle de congestionamento desativado\n");
 
   while(1) {
     int_quit = 0;    
@@ -394,11 +426,6 @@ int main(int argc, char const *argv[]) {
     thread_argumento->int_socket = int_socket;
 
     pthread_create(&(thread[int_num_threads]), NULL, conexaoControle, &thread_argumento[0]);
-
-    //if(int_quit == -1){
-    //  printf("\nCliente saiu\n");
-    //  int_quit = 0;
-    //}
 
     int_num_threads++;
 
