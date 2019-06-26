@@ -9,6 +9,8 @@
 
 #include <unistd.h>
 #include <dirent.h>
+#include <time.h>
+
 //char *getcwd(char *buf, size_t size);
 
 #define PORT 21 
@@ -155,23 +157,6 @@ struct sockaddr_in address;
     //state->message = "200 Command okay.\n";
 }
 
-char *LIST(){
-  struct dirent **namelist;
-  int n;
-
-  n = scandir(".", &namelist, 0, alphasort);
-  if (n < 0)
-    //perror("scandir");
-    printf("\nDeu erro\n");
-  else {
-    while(n--) {
-      printf("%s\n", namelist[n]->d_name);
-      free(namelist[n]);
-    }
-    free(namelist);
-  }
-}
-
 void response(Command *cmd, State *state) {
 
   if(strcmp(cmd->command, "USER") == 0 || strcmp(cmd->command, "user") == 0){  
@@ -242,6 +227,96 @@ void response(Command *cmd, State *state) {
     
     struct sockaddr_in address2; 
     struct sockaddr_in serv_addr2; 
+    int sock2 = 0, valread, soma_bytes; 
+    char *primeiraMSG = "150 File status okay; about to open data connection.\n";
+    char *segundaMSG = "226 Requested file action successful\n";  
+    char buffer[1024] = {0}, linha[80], linha2; 
+
+    FILE *fp;
+
+    clock_t tInicio, tFim;
+    clock_t tInicio2, tFim2;
+    double tDecorrido, soma_tDecorrido = 0;
+    
+    if (!(fp = fopen(cmd->arg,"r+")))  /* Caso ocorra algum erro na abertura do arquivo..*/ 
+  	{                           /* o programa aborta automaticamente */
+  	  printf("Erro! Impossivel abrir o arquivo!\n");
+  	  exit(1);
+  	}
+
+    if ((sock2 = socket(AF_INET, SOCK_STREAM, 0)) < 0) { 
+      printf("\n Socket creation error \n"); 
+      return -1; 
+    } 
+   
+    memset(&serv_addr2, '0', sizeof(serv_addr2)); 
+   
+    serv_addr2.sin_family = AF_INET; 
+    serv_addr2.sin_port = htons(int_porta); //htons(calcularPorta(cmd)); 
+       
+    // Convert IPv4 and IPv6 addresses from text to binary form 
+    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr2.sin_addr)<=0) { 
+      printf("\nInvalid address/ Address not supported \n"); 
+      return -1; 
+    } 
+   
+    if (connect(sock2, (struct sockaddr *)&serv_addr2, sizeof(serv_addr2)) < 0) { 
+      printf("\nConnection Failed %i\n", serv_addr2.sin_port); 
+      return -1; 
+    }
+ 
+    write(state->connection, primeiraMSG, strlen(primeiraMSG));
+    
+    
+    /*
+    while(!feof(fp)){
+      printf("%s", linha); 
+      //strcat(linha, "\n");
+      send(sock2, linha, strlen(linha), 0 ); 
+      fscanf(fp, "%s", linha); 
+    } 
+
+    while((linha2=fgetc(fp) )!= EOF ){
+      //printf("%s", linha2); 
+      //strcat(linha, "\n");
+      send(sock2, linha2, strlen(linha2), 0 ); 
+    } */
+
+    //tInicio2 = clock();
+    while((fgets(linha, sizeof(linha), fp)) != NULL){
+      tInicio = clock();
+      send(sock2, linha, strlen(linha), 0 ); 
+      tFim = clock();
+      //tDecorrido = ((tFim - tInicio) / (CLOCKS_PER_SEC / 1000));﻿
+      tDecorrido = ( (double) (tFim - tInicio) ) / CLOCKS_PER_SEC;
+
+      soma_tDecorrido += tDecorrido;
+      soma_bytes += strlen(linha);
+
+      printf("\n%lf\n", tDecorrido);
+    }
+    //tFim2 = clock();
+    printf("\n Outro tempo %d \n", tFim2 - tInicio2);
+    printf("\n Total de tempo decorrido %lf \n", soma_tDecorrido);
+    printf("\n Total de bytes enviados %d \n", soma_bytes);
+    printf("\nTaxa de bytes enviados: %lf\n", (soma_bytes / soma_tDecorrido) / 1000000);
+
+    close(sock2);
+    state->message = segundaMSG;
+    printf("\n%s\n", state->message);
+  }
+
+
+  if(strcmp(cmd->command, "LIST") == 0){
+    struct dirent **namelist;
+    int n;
+    FILE *teste;
+    char msg[1024];
+
+    teste=popen("ls -ls","r");
+
+    struct sockaddr_in address2; 
+    struct sockaddr_in serv_addr2; 
     int sock2 = 0, valread; 
     char *primeiraMSG = "150 File status okay; about to open data connection.\n";
     char *segundaMSG = "226 Requested file action successful\n";  
@@ -268,20 +343,24 @@ void response(Command *cmd, State *state) {
       return -1; 
     }
  
-    write(state->connection, primeiraMSG, strlen(primeiraMSG));
-    //send(sock2, primeiraMSG, strlen(primeiraMSG), 0 ); 
-    printf("%s\n", primeiraMSG); 
-    //valread = read(sock2, buffer, 1024); 
-    printf("%s\n",buffer ); 
-    send(sock2, "alguma coisa", strlen("alguma coisa"), 0 ); 
+   write(state->connection, primeiraMSG, strlen(primeiraMSG));
+   printf("chegou acima do send\n"); 
+   
+
+   while(1){
+    if(fread(msg,1023,1,teste)!=1)
+      if(feof(teste))//testa se chegou no EOF
+      msg[1023]='\0';
+      printf("%s",msg);
+      send(sock2, msg, strlen(msg), 0 ); 
+      break;//Interrompe while
+    } 
+    
+    
+    printf("passou do send%s\n", primeiraMSG); 
     close(sock2);
     state->message = segundaMSG;
     printf("\n%s\n", state->message);
-  }
-
-
-  if(strcmp(cmd->command, "LIST") == 0){
-    state->message = LIST();  
   }
 
   if(strcmp(cmd->command, "NOOP") == 0){
