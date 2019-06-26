@@ -7,10 +7,16 @@
 #include <pthread.h>
 #include <getopt.h>
 
+#include <unistd.h>
+#include <dirent.h>
+//char *getcwd(char *buf, size_t size);
+
 #define PORT 21 
 
 //Porta utilizada para conexão de dados
-int int_porta, int_quit = 0;
+int int_porta, int_quit = 0, int_taxa;
+
+float flt_taxa_utilizada_up, flt_taxa_utilizada_down;
 
 //TYPE 
 char *type = "a"; //Inicializada temporariamente com "a" para ASC II
@@ -63,9 +69,41 @@ typedef struct Command {
 typedef struct thread_argumento {
   int server_fd;
   int int_socket;
-  int teste;
+//  int teste;
 } Thread_argumento;
 
+char *PWD(){
+  long path_max;
+  char *cwd;
+  size_t size;
+  char *buf;
+  char *ptr, *ptr2;
+
+  ptr2 = "257 teste\n";
+  printf("\n%s\n", ptr2);
+
+  if (path_max == -1)
+    size = 1024;
+  else if (path_max > 10240)
+    size = 10240;
+  else
+    size = path_max;
+  
+  for (buf = ptr = NULL; ptr == NULL; size *= 2) {
+    if ((buf = realloc(buf, size)) == NULL) {
+    }
+
+    ptr = getcwd(buf, size);
+    printf("\n%s\n", ptr);
+    
+  }
+  
+  printf("%s", ptr);
+
+  ptr = strcat(ptr, "\n");
+
+  return ptr;
+}
 
 void parse_command(char *cmdstring, Command *cmd)
 {
@@ -117,6 +155,23 @@ struct sockaddr_in address;
     //state->message = "200 Command okay.\n";
 }
 
+char *LIST(){
+  struct dirent **namelist;
+  int n;
+
+  n = scandir(".", &namelist, 0, alphasort);
+  if (n < 0)
+    //perror("scandir");
+    printf("\nDeu erro\n");
+  else {
+    while(n--) {
+      printf("%s\n", namelist[n]->d_name);
+      free(namelist[n]);
+    }
+    free(namelist);
+  }
+}
+
 void response(Command *cmd, State *state) {
 
   if(strcmp(cmd->command, "USER") == 0 || strcmp(cmd->command, "user") == 0){  
@@ -129,6 +184,10 @@ void response(Command *cmd, State *state) {
 
   if(strcmp(cmd->command, "SYST") == 0 || strcmp(cmd->command, "syst") == 0){
     state->message = "215 Linux\n"; 
+  }
+
+  if(strcmp(cmd->command, "PWD") == 0 || strcmp(cmd->command, "pwd") == 0){
+    state->message = PWD();  
   }
 
   if(strcmp(cmd->command, "QUIT") == 0 || strcmp(cmd->command, "quit") == 0){
@@ -222,7 +281,7 @@ void response(Command *cmd, State *state) {
 
 
   if(strcmp(cmd->command, "LIST") == 0){
-      printf("\nTeste\n");
+    state->message = LIST();  
   }
 
   if(strcmp(cmd->command, "NOOP") == 0){
@@ -343,7 +402,7 @@ void *conexaoControle(void *arg){
 }
 
 int main(int argc, char const *argv[]) { 
-  ///Declaração de variáveis locais ao método main 
+  //Declaração de variáveis locais ao método main 
   /* */ struct sockaddr_in address;   
 
   /* */ int server_fd, int_socket, pid, int_num_threads = 0, i = 0, int_opt, int_t = 0; 
@@ -356,19 +415,8 @@ int main(int argc, char const *argv[]) {
   /* */ Thread_argumento thread_argumento[100];
   //Fim de declaração de variáveis
 
-  /*
-  while((int_opt = getopt(argc, argv, "ht:")) != -1){
-    switch (int_opt){
-      case 't':
-        int_t = &optarg;
-        break;
-      default: 
-        fprintf(stderr, "Uso: %s [-t taxa minima de envio em kbps] [-n] name\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-  }
-  
-  */
+
+  //Tratamento dos argumentos passados no argv
   while ((opt = getopt(argc, argv, "ct:")) != -1) {
     switch (opt) {
       case 'c':
@@ -378,16 +426,17 @@ int main(int argc, char const *argv[]) {
         int_taxa = atoi(optarg);
         break;
       default: /* '?' */
-        fprintf(stderr, "Uso: %s [-t taxa mínima de envio] [-c ativa controle de congestionamento]\n", argv[0]);
+        fprintf(stderr, "Uso: %s [-t taxa mínima de envio em kbps] [-c ativa controle de congestionamento]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
   }
 
-  if (optind <= argc) {
-    fprintf(stderr, "Uso: %s [-t taxa minima de envio] [-c ativa controle de congestionamento]\n", argv[0]);
-    exit(EXIT_FAILURE);
-  }
-	
+  //if (optind <= argc) {
+  //  fprintf(stderr, "Uso: %s [-t taxa mínima de envio em kbps] [-c ativa controle de congestionamento]\n", argv[0]);
+  //  exit(EXIT_FAILURE);
+  //}
+  //Fim de tratamento dos argumentos
+
   //Cria o socket
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) { 
     perror("socket failed"); 
@@ -410,8 +459,9 @@ int main(int argc, char const *argv[]) {
     exit(EXIT_FAILURE); 
   } 
                                                                                                                             
-  printf("Servidor escutando na porta %i com taxa mínima de envio de %i", PORT, int_taxa);
-  (int_controle_congestionamento == -1) ? printf(" com controle de congestionamento ativado\n") : printf(" com controle de congestionamento desativado\n");
+  printf("Servidor escutando com as seguintes especificacoes:\n");
+  printf("Porta = %i; Taxa mínima de transferencia = %ikbps; Controle de congestionamento =", PORT, int_taxa);
+  (int_controle_congestionamento == -1) ? printf(" ativado;\n") : printf(" desativado;\n");
 
   while(1) {
     int_quit = 0;    
@@ -429,7 +479,7 @@ int main(int argc, char const *argv[]) {
 
     int_num_threads++;
 
-    /*	 
+    /* Esse bloco de código é o antigo com fork(), pode ser implementado uma opção com ele futuramente	 
     pid = fork();
 
     if(pid == 0){
