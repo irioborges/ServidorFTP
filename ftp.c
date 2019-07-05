@@ -11,7 +11,7 @@
 #include <dirent.h>
 #include <time.h>
 
-//char *getcwd(char *buf, size_t size);
+#include <math.h>
 
 #define PORT 21 
 
@@ -224,19 +224,26 @@ void response(Command *cmd, State *state) {
   }
 
   if(strcmp(cmd->command, "RETR") == 0){
-    
+    //Declaração de variáveis
     struct sockaddr_in address2; 
     struct sockaddr_in serv_addr2; 
     int sock2 = 0, valread, soma_bytes; 
     char *primeiraMSG = "150 File status okay; about to open data connection.\n";
     char *segundaMSG = "226 Requested file action successful\n";  
     char buffer[1024] = {0}, linha[80], linha2; 
+    time_t rawtime;
+    struct tm * timeinfo;
+    float flt_velocidade;
 
     FILE *fp;
 
     clock_t tInicio, tFim;
     clock_t tInicio2, tFim2;
+    clock_t tIntermediarioInicio, tIntermediarioFim;
+
     double tDecorrido, soma_tDecorrido = 0;
+
+    //Fim de declaração de variáveis
     
     if (!(fp = fopen(cmd->arg,"r+")))  /* Caso ocorra algum erro na abertura do arquivo..*/ 
   	{                           /* o programa aborta automaticamente */
@@ -266,40 +273,60 @@ void response(Command *cmd, State *state) {
     }
  
     write(state->connection, primeiraMSG, strlen(primeiraMSG));
-    
-    
-    /*
-    while(!feof(fp)){
-      printf("%s", linha); 
-      //strcat(linha, "\n");
-      send(sock2, linha, strlen(linha), 0 ); 
-      fscanf(fp, "%s", linha); 
-    } 
 
-    while((linha2=fgetc(fp) )!= EOF ){
-      //printf("%s", linha2); 
-      //strcat(linha, "\n");
-      send(sock2, linha2, strlen(linha2), 0 ); 
-    } */
+    
+    tDecorrido = 0;
+    soma_bytes = 0;
+    tIntermediarioFim = 0;
 
-    //tInicio2 = clock();
+    soma_bytes = 0;
+    tInicio = clock();
+
+    fgets(linha, sizeof(linha), fp);
+    send(sock2, linha, strlen(linha), 0 ); 
+    soma_bytes += strlen(linha);
+    fgets(linha, sizeof(linha), fp);
+    send(sock2, linha, strlen(linha), 0 ); 
+    soma_bytes += strlen(linha);
+    fgets(linha, sizeof(linha), fp);
+    send(sock2, linha, strlen(linha), 0 ); 
+    soma_bytes += strlen(linha);
+    tFim = clock();
+
+    printf("\n%d\n", soma_bytes);
+    flt_velocidade = (double) ((tFim) / CLOCKS_PER_SEC);
+    //flt_velocidade = soma_bytes / flt_velocidade;
+    printf("\nTeste %lf\n", flt_velocidade);
+
+    tInicio = clock();
+
     while((fgets(linha, sizeof(linha), fp)) != NULL){
-      tInicio = clock();
+      
+      
+      //tIntermediarioInicio = clock();
       send(sock2, linha, strlen(linha), 0 ); 
-      tFim = clock();
-      //tDecorrido = ((tFim - tInicio) / (CLOCKS_PER_SEC / 1000));﻿
-      tDecorrido = ( (double) (tFim - tInicio) ) / CLOCKS_PER_SEC;
+      //tIntermediarioFim = clock();
 
-      soma_tDecorrido += tDecorrido;
-      soma_bytes += strlen(linha);
+      //tDecorrido += (double) (tIntermediarioFim - tIntermediarioInicio) / CLOCKS_PER_SEC;
 
-      printf("\n%lf\n", tDecorrido);
+      //if(strlen(linha) / tDecorrido)
+      //sleep(3);
+      //printf("\n%lf\n", tDecorrido);
+      //flt_velocidade = strlen(linha) / ((tIntermediarioFim - tIntermediarioInicio) / CLOCKS_PER_SEC);
+      //printf("\n%lf\n",(double) ((tIntermediarioFim - tIntermediarioInicio) / CLOCKS_PER_SEC));
+      //printf("\n%lf\n", (double) ((tIntermediarioFim - tIntermediarioInicio)));
+      //printf("\nvelocidade media de envio %lf\n");
+
+      //printf("\n%lf\n", (double) (tIntermediarioFim / CLOCKS_PER_SEC));
+      //soma_bytes += strlen(linha);
+      
     }
-    //tFim2 = clock();
-    printf("\n Outro tempo %d \n", tFim2 - tInicio2);
-    printf("\n Total de tempo decorrido %lf \n", soma_tDecorrido);
-    printf("\n Total de bytes enviados %d \n", soma_bytes);
-    printf("\nTaxa de bytes enviados: %lf\n", (soma_bytes / soma_tDecorrido) / 1000000);
+
+    tFim = clock();
+
+    tDecorrido = ( (double) (tFim - tInicio) ) / CLOCKS_PER_SEC;
+    printf("\n%lf\n", tDecorrido);
+    printf("\n Outro tempo %d \n", tFim - tInicio);
 
     close(sock2);
     state->message = segundaMSG;
@@ -468,7 +495,7 @@ void *conexaoControle(void *arg){
 
       if(int_quit == -1){
         int_quit = 0;
-	pthread_exit(NULL);
+	      pthread_exit(NULL);
       }
 
       memset(buffer,0, 1024);
